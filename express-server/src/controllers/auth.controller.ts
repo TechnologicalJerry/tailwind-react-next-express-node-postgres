@@ -5,6 +5,7 @@ import { AppError } from '../middleware/errorHandler';
 
 export class AuthController {
   async register(req: Request, res: Response, next: NextFunction) {
+    console.log('Register request body:', req.body);
     try {
       const result = await authService.register(req.body);
       sendSuccess(res, result, 'User registered successfully', 201);
@@ -14,9 +15,19 @@ export class AuthController {
   }
 
   async login(req: Request, res: Response, next: NextFunction) {
+    console.log('Login request body:', req.body);
     try {
-      const result = await authService.login(req.body);
+      const result = await authService.login(req.body, req);
       sendSuccess(res, result, 'Login successful');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async logout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await authService.logout(req);
+      sendSuccess(res, result, 'Logout successful');
     } catch (error) {
       next(error);
     }
