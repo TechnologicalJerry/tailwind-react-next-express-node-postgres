@@ -1,4 +1,5 @@
 import { eq, or } from 'drizzle-orm';
+import { Request } from 'express';
 import { db } from '../config/database';
 import { users } from '../db/schema';
 import { hashPassword, comparePassword } from '../utils/password';
@@ -6,6 +7,7 @@ import { generateToken } from '../utils/jwt';
 import { AppError } from '../middleware/errorHandler';
 import { DEFAULT_ROLE } from '../config/roles';
 import { RegisterInput, LoginInput } from '../validators/auth.validator';
+import { sessionService } from './session.service';
 
 export class AuthService {
   async register(data: RegisterInput) {
@@ -72,7 +74,7 @@ export class AuthService {
     };
   }
 
-  async login(data: LoginInput) {
+  async login(data: LoginInput, req: Request) {
     // Try to find user by email or username
     const [user] = await db
       .select()
@@ -101,6 +103,18 @@ export class AuthService {
       role: user.role,
     });
 
+    // Create session if session exists in request
+    if (req.session) {
+      const sessionId = req.sessionID;
+      await sessionService.createSession(sessionId, user.id, req);
+      
+      // Store user info in session
+      req.session.userId = user.id;
+      req.session.email = user.email;
+      req.session.role = user.role;
+      req.session.status = 'login';
+    }
+
     return {
       user: {
         id: user.id,
@@ -114,7 +128,36 @@ export class AuthService {
         createdAt: user.createdAt,
       },
       token,
+      sessionId: req.session?.id,
+      status: 'login',
     };
+  }
+
+  async logout(req: Request): Promise<{ status: string }> {
+    if (!req.session) {
+      throw new AppError('No active session found', 400);
+    }
+
+    const sessionId = req.sessionID;
+    
+    // Update session status in database
+    await sessionService.updateSessionStatus(sessionId, 'logged_out');
+    
+    // Update session status
+    if (req.session) {
+      req.session.status = 'logout';
+    }
+
+    // Destroy session
+    return new Promise((resolve, reject) => {
+      req.session?.destroy((err) => {
+        if (err) {
+          reject(new AppError('Failed to logout', 500));
+        } else {
+          resolve({ status: 'logout' });
+        }
+      });
+    });
   }
 }
 
