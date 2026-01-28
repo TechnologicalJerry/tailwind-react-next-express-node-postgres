@@ -1,0 +1,499 @@
+{
+	"info": {
+		"_postman_id": "12345678-1234-1234-1234-123456789abc",
+		"name": "tailwind-react-next-express-node-postgres",
+		"description": "Complete API collection for the Express Server with authentication, session management, users, and products management",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "1234567"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": ["{{base_url}}"],
+					"path": ["health"]
+				},
+				"description": "Check if the server is running"
+			},
+			"response": []
+		},
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.environment.set('auth_token', jsonData.data.token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"userName\": \"johndoe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePassword123\",\n  \"confirmPassword\": \"SecurePassword123\",\n  \"dob\": \"1990-01-01\",\n  \"gender\": \"male\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "register"]
+						},
+						"description": "Register a new user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.environment.set('auth_token', jsonData.data.token);",
+									"    }",
+									"    if (jsonData.data && jsonData.data.sessionId) {",
+									"        pm.environment.set('session_id', jsonData.data.sessionId);",
+									"    }",
+									"    if (jsonData.data && jsonData.data.user && jsonData.data.user.id) {",
+									"        pm.environment.set('user_id', jsonData.data.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"emailOrUsername\": \"john.doe@example.com\",\n  \"password\": \"SecurePassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Login with email/username and password. Creates a session and returns JWT token, sessionId, and status. Session data is stored in database with status 'login'."
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Logout successful:', jsonData);",
+									"    // Session is destroyed, clear session_id",
+									"    pm.environment.unset('session_id');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "logout"]
+						},
+						"description": "Logout the current user. Destroys the session and updates session status to 'logout' in database. No authentication required (works even with expired tokens)."
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints for user registration, login, and logout. Login creates a session stored in database with status tracking."
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users?page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search term",
+									"disabled": true
+								},
+								{
+									"key": "role",
+									"value": "user",
+									"description": "Filter by role: admin, manager, user",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get all users with pagination. Requires authentication and USER_READ permission."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", "{{user_id}}"]
+						},
+						"description": "Get a specific user by ID. Requires authentication and USER_READ permission."
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\",\n  \"userName\": \"janesmith\",\n  \"email\": \"jane.smith@example.com\",\n  \"dob\": \"1992-05-15\",\n  \"gender\": \"female\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", "{{user_id}}"]
+						},
+						"description": "Update user information. Requires authentication and USER_UPDATE permission."
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Role",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"role\": \"manager\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}/role",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", "{{user_id}}", "role"]
+						},
+						"description": "Update user role. Requires authentication and admin role. Allowed roles: admin, manager, user"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", "{{user_id}}"]
+						},
+						"description": "Delete a user. Requires authentication and USER_DELETE permission (admin only)."
+					},
+					"response": []
+				}
+			],
+			"description": "User management endpoints. All routes require authentication."
+		},
+		{
+			"name": "Products",
+			"item": [
+				{
+					"name": "Get All Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/products?page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search term",
+									"disabled": true
+								},
+								{
+									"key": "categoryId",
+									"value": "",
+									"description": "Filter by category UUID",
+									"disabled": true
+								},
+								{
+									"key": "minPrice",
+									"value": "",
+									"description": "Minimum price filter",
+									"disabled": true
+								},
+								{
+									"key": "maxPrice",
+									"value": "",
+									"description": "Maximum price filter",
+									"disabled": true
+								},
+								{
+									"key": "isActive",
+									"value": "true",
+									"description": "Filter by active status",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get all products with pagination and filters. Public endpoint (no authentication required)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Product by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/products/{{product_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products", "{{product_id}}"]
+						},
+						"description": "Get a specific product by ID. Public endpoint (no authentication required)."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Product",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Sample Product\",\n  \"description\": \"This is a sample product description\",\n  \"price\": \"29.99\",\n  \"stock\": 100,\n  \"categoryId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"imageUrl\": \"https://example.com/image.jpg\",\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/products",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products"]
+						},
+						"description": "Create a new product. Requires authentication and PRODUCT_WRITE permission."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Product",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Product Name\",\n  \"description\": \"Updated product description\",\n  \"price\": \"39.99\",\n  \"stock\": 150,\n  \"imageUrl\": \"https://example.com/updated-image.jpg\",\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/products/{{product_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products", "{{product_id}}"]
+						},
+						"description": "Update an existing product. Requires authentication and PRODUCT_UPDATE permission."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Product",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/products/{{product_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "products", "{{product_id}}"]
+						},
+						"description": "Delete a product. Requires authentication and PRODUCT_DELETE permission."
+					},
+					"response": []
+				}
+			],
+			"description": "Product management endpoints. Read operations are public, write operations require authentication and permissions."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5050",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "product_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "session_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
