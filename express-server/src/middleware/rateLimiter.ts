@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { sendError } from '../utils/responses';
+import { env } from '../config/env';
 
 interface RateLimitStore {
   [key: string]: {
@@ -71,13 +72,14 @@ export function rateLimiter(options: RateLimitOptions) {
 }
 
 // Pre-configured rate limiters
+// More lenient limits in development for testing
 export const authRateLimiter = rateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 requests per window
+  max: env.NODE_ENV === 'production' ? 5 : 50, // 5 requests in production, 50 in development
   message: 'Too many authentication attempts, please try again later',
 });
 
 export const apiRateLimiter = rateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
+  max: env.NODE_ENV === 'production' ? 100 : 1000, // 100 requests in production, 1000 in development
 });
