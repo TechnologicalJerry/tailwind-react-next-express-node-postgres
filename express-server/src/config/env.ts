@@ -16,6 +16,8 @@ const envSchema = z.object({
   
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('7d'),
+  SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
+  SESSION_MAX_AGE: z.string().regex(/^\d+$/).transform(Number).default('86400000'), // 24 hours in milliseconds
   CORS_ORIGIN: z.string().url().default('http://localhost:3000'),
 });
 
