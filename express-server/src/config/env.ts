@@ -19,6 +19,13 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
   SESSION_MAX_AGE: z.string().regex(/^\d+$/).transform(Number).default('86400000'), // 24 hours in milliseconds
   CORS_ORIGIN: z.string().url().default('http://localhost:3000'),
+  
+  // Gmail SMTP Configuration
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.string().regex(/^\d+$/).transform(Number).default('587'),
+  SMTP_USER: z.string().email('SMTP_USER must be a valid email address'),
+  SMTP_PASS: z.string().min(1, 'SMTP_PASS is required'),
+  FRONTEND_URL: z.string().url().default('http://localhost:3000'),
 });
 
 type Env = z.infer<typeof envSchema>;
