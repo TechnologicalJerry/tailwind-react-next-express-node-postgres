@@ -15,6 +15,8 @@ export const users = pgTable('users', {
   dob: date('dob'),
   gender: genderEnum('gender'),
   role: roleEnum('role').default('user').notNull(),
+  passwordResetToken: varchar('password_reset_token', { length: 255 }),
+  passwordResetExpires: timestamp('password_reset_expires'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
