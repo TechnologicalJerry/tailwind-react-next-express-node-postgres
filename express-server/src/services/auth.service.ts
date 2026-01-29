@@ -6,8 +6,10 @@ import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { AppError } from '../middleware/errorHandler';
 import { DEFAULT_ROLE } from '../config/roles';
-import { RegisterInput, LoginInput } from '../validators/auth.validator';
+import { RegisterInput, LoginInput, ForgotPasswordInput, ResetPasswordInput } from '../validators/auth.validator';
 import { sessionService } from './session.service';
+import { generateResetToken, hashResetToken, verifyResetToken } from '../utils/resetToken';
+import { emailService } from './email.service';
 
 export class AuthService {
   async register(data: RegisterInput) {
@@ -158,6 +160,112 @@ export class AuthService {
         }
       });
     });
+  }
+
+  async forgotPassword(data: ForgotPasswordInput): Promise<{ message: string }> {
+    // Find user by email
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, data.email))
+      .limit(1);
+
+    // Don't reveal if email exists or not (security best practice)
+    // Always return success message even if user doesn't exist
+    if (!user) {
+      return {
+        message: 'If an account with that email exists, a password reset link has been sent.',
+      };
+    }
+
+    // Generate reset token
+    const resetToken = generateResetToken();
+    const hashedToken = hashResetToken(resetToken);
+    
+    // Set expiration to 1 hour from now
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Save reset token and expiration to database
+    await db
+      .update(users)
+      .set({
+        passwordResetToken: hashedToken,
+        passwordResetExpires: resetExpires,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    // Send password reset email
+    try {
+      await emailService.sendPasswordResetEmail(
+        user.email,
+        resetToken,
+        user.userName || user.firstName || undefined
+      );
+    } catch (error) {
+      // If email fails, clear the reset token
+      await db
+        .update(users)
+        .set({
+          passwordResetToken: null,
+          passwordResetExpires: null,
+        })
+        .where(eq(users.id, user.id));
+      
+      throw new AppError('Failed to send password reset email. Please try again later.', 500);
+    }
+
+    return {
+      message: 'If an account with that email exists, a password reset link has been sent.',
+    };
+  }
+
+  async resetPassword(data: ResetPasswordInput): Promise<{ message: string }> {
+    // Hash the token to compare with stored hash
+    const hashedToken = hashResetToken(data.token);
+
+    // Find user with valid reset token
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.passwordResetToken, hashedToken))
+      .limit(1);
+
+    if (!user) {
+      throw new AppError('Invalid or expired reset token', 400);
+    }
+
+    // Check if token has expired
+    if (!user.passwordResetExpires || user.passwordResetExpires < new Date()) {
+      // Clear expired token
+      await db
+        .update(users)
+        .set({
+          passwordResetToken: null,
+          passwordResetExpires: null,
+        })
+        .where(eq(users.id, user.id));
+      
+      throw new AppError('Reset token has expired. Please request a new password reset.', 400);
+    }
+
+    // Hash new password
+    const hashedPassword = await hashPassword(data.password);
+
+    // Update password and clear reset token
+    await db
+      .update(users)
+      .set({
+        password: hashedPassword,
+        passwordResetToken: null,
+        passwordResetExpires: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    return {
+      message: 'Password has been reset successfully. You can now login with your new password.',
+    };
   }
 }
 
