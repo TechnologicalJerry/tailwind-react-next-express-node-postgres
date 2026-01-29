@@ -146,9 +146,83 @@
 						"description": "Logout the current user. Destroys the session and updates session status to 'logout' in database. No authentication required (works even with expired tokens)."
 					},
 					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Password reset email sent:', jsonData);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"john.doe@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/forgot-password",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "forgot-password"]
+						},
+						"description": "Request a password reset. Sends an email with a reset link to the provided email address. The reset token expires in 1 hour. For security, always returns success message even if email doesn't exist."
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Password reset successful:', jsonData);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"your-reset-token-from-email\",\n  \"password\": \"NewSecurePassword123\",\n  \"confirmPassword\": \"NewSecurePassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/reset-password",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "reset-password"]
+						},
+						"description": "Reset password using the token received via email. Token must be valid and not expired (1 hour expiration). After successful reset, the token is invalidated."
+					},
+					"response": []
 				}
 			],
-			"description": "Authentication endpoints for user registration, login, and logout. Login creates a session stored in database with status tracking."
+			"description": "Authentication endpoints for user registration, login, logout, and password reset. Login creates a session stored in database with status tracking."
 		},
 		{
 			"name": "Users",
@@ -492,6 +566,11 @@
 		},
 		{
 			"key": "session_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "reset_token",
 			"value": "",
 			"type": "string"
 		}
